@@ -1,0 +1,829 @@
+---
+title: "Analisi Esplorativa del Mercato Immobiliare del Texas"
+output:
+  pdf_document: default
+date: "2023-07-15"
+author: Riccardo Marotta
+---
+
+```{r setup, include=FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+options(warn = -1)
+suppressWarnings({
+  library(dplyr)
+})
+```
+
+Questo report è il risultato dell'analisi del mercato immobiliare del Texas, svolta utilizzando il software statistico R. E' organizzato in paragrafi corrispondenti alle task di progetto.
+
+## 1. Scarica il dataset realestate_texas.csv da [qui](https://drive.google.com/file/d/1LF8WfFq81Oxy6uG08evhRAha_UpTzh1_/view) e importalo con R, questo contiene dei dati riguardanti le vendite di immobili in Texas
+
+```{r, results='hide'}
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(moments)
+library(gghalves)
+
+dataset <- read.csv("realestate_texas.csv", header = TRUE, sep = ",")
+dim(dataset)
+attach(dataset)
+```
+
+Il dataset realestate_texas.csv è stato importato su R; esso si compone di 240 osservazioni e 8 variabili.
+
+## 2. Indica il tipo di variabili contenute nel dataset
+
+* **city**: variabile qualitativa su scala nominale
+* **year**: variabile quantitativa su scala di intervalli
+* **month**: variabile qualitativa su scala ordinale, codificata nell'intervallo di valori [1:12]
+* **sales**: variabile quantitativa discreta
+* **volume**: variabile quantitativa continua
+* **median_price**: variabile quantitativa discreta
+* **listings**: variabile quantitativa discreta
+* **months_inventory**: variabile quantitativa continua
+
+## 3. Calcola Indici di posizione, variabilità e forma per tutte le variabili per le quali ha senso farlo, per le altre crea una distribuzione di frequenza. Commenta tutto brevemente
+
+Il paragrafo è stato organizzato in sezioni corrispondenti alle variabili analizzate.
+
+### 3.1 City
+
+La variabile city è una variabile qualitativa su scala nominale, rappresentativa delle città del Texas presenti nel campione osservato. Considerando che per tale variabile non è possibile calcolare gli indici richiesti, è stata creata la distribuzione di frequenze assolute.
+
+```{r}
+kable(table(city), caption = "**Distribuzione di Frequenze Assolute *(ni)***",
+      col.names = c("**city**", "**ni**"))
+```
+
+Tale distribuzione evidenzia come ciascuna modalità della variabile city sia presente all'interno del campione con la medesima frequenza. Ne consegue che ciascuna modalità corrisponde alla moda della distribuzione (unimodale).
+
+### 3.2 Year
+
+La variabile year è una variabile quantitativa su scala di intervalli, rappresentativa dell'anno di riferimento. Per tale variabile non ha senso il calcolo degli indici richiesti ed è stata pertanto creata la distribuzione di frequenze relative.
+
+```{r}
+n <- dim(dataset)[1]
+kable(table(year)/n, caption = "**Distribuzione di Frequenze Relative *(fi)***", col.names = c("**year**", "**fi**"))
+```
+
+Anche la distribuzione della variabile year è unimodale poiché ciascun valore è presente all'interno del dataset con la medesima frequenza.
+Inoltre, dalla tabella si può facilmente notare il periodo di riferimento del campione osservato (2010-2014), senza dover ricorrere al calcolo di minimo e massimo.
+
+### 3.3 Month
+
+La variabile month è una variabile qualitativa su scala ordinale, codificata nell'intervallo di valori [1:12], rappresentativa dei mesi dell'anno da Gennaio a Dicembre. Per tale variabile non ha senso il calcolo degli indici richiesti ed è stata pertanto creata la distribuzione di frequenze assolute.
+
+```{r}
+kable(table(month), caption = "**Distribuzione di Frequenze Assolute *(ni)***", col.names = c("**month**", "**ni**"))
+```
+Anche la distribuzione della variabile month è unimodale dato che ciascuna modalità registra la medesima frequenza nel campione osservato.
+
+Osservando le seguenti distribuzioni di frequenze assolute congiunte delle variabili city, year e month possiamo notare che il dataset si compone di una rilevazione al mese per ogni città e anno di riferimento. 
+Le due tabelle si riferiscono rispettivamente ai mesi di Gennaio e Febbraio, ma il risultato è il medesimo considerando gli altri mesi.
+
+```{r}
+distr_freq_congiunte_gen <- table(city, year, month)[,,1]
+distr_freq_congiunte_feb <- table(city, year, month)[,,2]
+
+kable(distr_freq_congiunte_gen, caption = "**Distribuzione di Frequenze Assolute Congiunte - Gennaio**")
+
+kable(distr_freq_congiunte_feb, caption = "**Distribuzione di Frequenze Assolute Congiunte - Febbraio**")
+```
+
+### 3.4 Sales 
+
+La variabile sales è una variabile quantitativa discreta, rappresentativa del numero totale di vendite. Nella tabella che segue vengono riportati i relativi indici di posizione, variabilità e forma.
+
+```{r, results='hide'}
+# moda
+sort(table(sales))
+```
+
+```{r}
+# funzione per il calcolo del coefficiente di variazione
+CV = function(x){
+  return(sd(x)/mean(x)*100)
+}
+
+stats_sales <- matrix(data=c(min(sales), quantile(sales, 0.25),
+                             median(sales), quantile(sales, 0.75), 
+                             max(sales), mean(sales), 124, max(sales)-min(sales),
+                             IQR(sales), sd(sales), CV(sales), skewness(sales),
+                             kurtosis(sales)-3), 
+                      nrow = 1, ncol = 13,
+                      dimnames = list("", 
+                                      c("**Min**","**1°Qu.**","**2°Qu.**",
+                                        "**3°Qu.**", "**Max**", "**Media**",
+                                        "**Moda**", "**Range**", "**IQR**",
+                                        "**Dev.st**","**CV**", "**Asim.**",
+                                        "**Curt.**")))
+
+kable(stats_sales, caption = "**Indici della variabile Sales**", 
+      digits = 2, align = "c")
+```
+
+Relativamente agli **indici di posizione**, il numero totale delle vendite va da un minimo di 79 ad un massimo di 423, con una media di 192.3. Il 1° e 3° quartile sono pari rispettivamente a 127 e 247, mentre il 2° quartile (mediana) è 175.5. Inoltre, il valore di 124 corrisponde alla moda della distribuzione.
+
+Per quanto riguarda gli **indici di variabilità**, vi è una differenza di 344 tra il valore massimo e minimo (range), mentre l'intervallo di variazione del corpo centrale dei dati corrisponde a 120 (IQR).
+La deviazione standard di 79.6 indica che il numero di vendite spazia mediamente nel seguente intervallo [192.3 - 79.6 ; 192.3 + 79.6].
+Il coefficiente di variazione pari a 41.42 indica che la deviazione standard della variabile sales è c.ca il 41% della sua media.
+
+Infine, osservando gli **indici di forma**, l'indice di asimmetria pari a 0.72 evidenzia un'asimmetria positiva, ovvero sono più frequenti valori bassi. L'indice di curtosi pari a -0.31 indica che la distribuzione della variabile sales è platicurtica, ovvero ha una forma più appiattita rispetto a quella della distribuzione normale.
+
+### 3.5 Volume 
+
+La variabile volume è una variabile quantitativa continua, rappresentativa del valore totale delle vendite in milioni di dollari. Nella tabella che segue vengono riportati i relativi indici di posizione, variabilità e forma.
+
+```{r}
+stats_volume <- matrix(data=c(min(volume), quantile(volume, 0.25),
+                             median(volume), quantile(volume, 0.75), 
+                             max(volume), mean(volume),
+                             max(volume)-min(volume),
+                             IQR(volume), sd(volume), CV(volume),
+                             skewness(volume),
+                             kurtosis(volume)-3), 
+                       nrow = 1, ncol = 12,
+                       dimnames = list("", 
+                                      c("**Min**","**1°Qu.**","**2°Qu.**",
+                                        "**3°Qu.**", "**Max**", "**Media**",
+                                        "**Range**", "**IQR**",
+                                        "**Dev.st**","**CV**", "**Asim.**",
+                                        "**Curt.**")))
+
+kable(stats_volume, caption = "**Indici della variabile Volume**", 
+      digits = 2, align = "c")
+```
+
+Relativamente agli **indici di posizione**, i valori di tale variabile vanno da un minimo di 8.17 ad un massimo di 83.55, con una media di c.ca 31. Il 1° e 3° quartile sono pari rispettivamente a 17.66 e 40.89, mentre il 2° quartile (mediana) è 27.06.
+Poiché i valori della variabile sono su scala continua, è molto difficile che un singolo valore possa ripetersi in modo identico nel campione osservato e, pertanto, non ha molto senso calcolarne la moda.
+
+Per quanto riguarda gli **indici di variabilità**, vi è una differenza di c.ca 75 tra il valore massimo e minimo (range), mentre l'intervallo di variazione del corpo centrale dei dati corrisponde a c.ca 23 (IQR).
+La deviazione standard di 16.65 indica che i valori della variabile spaziano mediamente nel seguente intervallo [31.01 - 16.65 ; 31.01 + 16.65].
+Il coefficiente di variazione pari a 53.71 indica che la deviazione standard della variabile volume è c.ca il 53% della sua media.
+
+Infine, osservando gli **indici di forma**, l'indice di asimmetria pari a 0.88 evidenzia un'asimmetria positiva, ovvero sono più frequenti valori bassi. L'indice di curtosi pari a 0.18 indica che la distribuzione della variabile volume è leptocurtica, ovvero ha una forma più allungata rispetto a quella della distribuzione normale.
+
+### 3.6 Median_price 
+
+La variabile median_price è una variabile quantitativa discreta, rappresentativa del prezzo mediano di vendita in dollari. Nella tabella che segue vengono riportati i relativi indici di posizione, variabilità e forma.
+
+```{r, results='hide'}
+# moda
+sort(table(median_price))
+```
+
+```{r}
+stats_median_price <- matrix(data=c(min(median_price),
+                                    quantile(median_price, 0.25),
+                                    median(median_price), 
+                                    quantile(median_price, 0.75),
+                                    max(median_price),
+                                    round(mean(median_price)), 130000,
+                                    max(median_price)-min(median_price),
+                                    IQR(median_price), 
+                                    round(sd(median_price), 1),
+                                    CV(median_price), skewness(median_price),
+                                    kurtosis(median_price)-3),
+                             nrow = 1, ncol = 13,
+                             dimnames = list("", 
+                                      c("**Min**","**1°Qu.**","**2°Qu.**",
+                                        "**3°Qu.**", "**Max**", "**Media**",
+                                        "**Moda**", "**Range**", "**IQR**",
+                                        "**Dev.st**","**CV**", "**Asim.**",
+                                        "**Curt.**")))
+
+kable(stats_median_price, caption = "**Indici della variabile Median_price**", 
+      digits = 2, align = "c")
+```
+
+Relativamente agli **indici di posizione**, il prezzo mediano di vendita va da un minimo di 73800 ad un massimo di 180000, con una media di 132665.
+Il 1° e 3° quartile sono pari rispettivamente a 117300 e 150050, mentre il 2° quartile (mediana) è 134500. Inoltre, il valore di 130000 corrisponde alla moda della distribuzione.
+
+Per quanto riguarda gli **indici di variabilità**, vi è una differenza di 106200 tra il valore massimo e minimo (range), mentre l'intervallo di variazione del corpo centrale dei dati corrisponde a 32750 (IQR).
+La deviazione standard di 22662.1 indica che il prezzo mediano di vendita spazia mediamente nel seguente intervallo [132665 - 22662.1 ; 132665 + 22662.1].
+Il coefficiente di variazione pari a 17.08 indica che la deviazione standard della variabile median_price è c.ca il 17% della sua media.
+
+Infine, osservando gli **indici di forma**, l'indice di asimmetria pari a -0.36 evidenzia un'asimmetria negativa, ovvero sono più frequenti valori alti. L'indice di curtosi pari a -0.62 indica che la distribuzione della variabile median_price è platicurtica, ovvero ha una forma più appiattita rispetto a quella della distribuzione normale.
+
+### 3.7 Listings 
+
+La variabile listings è una variabile quantitativa discreta, rappresentativa del numero totale di annunci attivi. Nella tabella che segue vengono riportati i relativi indici di posizione, variabilità e forma.
+
+```{r, results='hide'}
+# moda
+sort(table(listings))
+```
+
+```{r}
+stats_listings <- matrix(data=c(min(listings), quantile(listings, 0.25),
+                             median(listings), quantile(listings, 0.75), 
+                             max(listings), round(mean(listings)), 1581,
+                             max(listings)-min(listings),
+                             IQR(listings), sd(listings), CV(listings),
+                             skewness(listings), kurtosis(listings)-3), 
+                          nrow = 1, ncol = 13,
+                          dimnames = list("", 
+                                      c("**Min**","**1°Qu.**","**2°Qu.**",
+                                        "**3°Qu.**", "**Max**", "**Media**",
+                                        "**Moda**", "**Range**", "**IQR**",
+                                        "**Dev.st**","**CV**", "**Asim.**",
+                                        "**Curt.**")))
+
+kable(stats_listings, caption = "**Indici della variabile Listings**", 
+      digits = 2, align = "c")
+```
+
+Relativamente agli **indici di posizione**, il numero totale di annunci attivi va da un minimo di 743 ad un massimo di 3296, con una media di 1738. 
+Il 1° e 3° quartile sono pari rispettivamente a 1026.5 e 2056, mentre il 2° quartile (mediana) è 1618.5. Inoltre, il valore di 1581 corrisponde alla moda della distribuzione.
+
+Per quanto riguarda gli **indici di variabilità**, vi è una differenza di 2553 tra il valore massimo e minimo (range), mentre l'intervallo di variazione del corpo centrale dei dati corrisponde a 1029.5 (IQR).
+La deviazione standard di 752.71 indica che il numero totale di annunci attivi spazia mediamente nel seguente intervallo [1738 - 752.71 ; 1738 + 752.71].
+Il coefficiente di variazione pari a 43.31 indica che la deviazione standard della variabile listings è c.ca il 43% della sua media.
+
+Infine, osservando gli **indici di forma**, l'indice di asimmetria pari a 0.65 evidenzia un'asimmetria positiva, ovvero sono più frequenti valori bassi. L'indice di curtosi pari a -0.79 indica che la distribuzione della variabile listings è platicurtica, ovvero ha una forma più appiattita rispetto a quella della distribuzione normale.
+
+### 3.8 Months_inventory 
+
+La variabile months_inventory è una variabile quantitativa continua e rappresenta la quantità di tempo, espressa in mesi, necessaria per vendere tutte le inserzioni correnti al ritmo attuale delle vendite. Nella tabella che segue vengono riportati i relativi indici di posizione, variabilità e forma.
+
+```{r, results='hide'}
+# moda
+sort(table(months_inventory))
+```
+
+```{r}
+stats_months_inventory <- matrix(data=c(min(months_inventory), 
+                                        quantile(months_inventory, 0.25),
+                                        median(months_inventory),
+                                        quantile(months_inventory, 0.75),
+                                        max(months_inventory),
+                                        mean(months_inventory), 8.1,
+                                    max(months_inventory)-min(months_inventory),
+                                    IQR(months_inventory), sd(months_inventory),
+                                    CV(months_inventory),
+                                    skewness(months_inventory),
+                                    kurtosis(months_inventory)-3), 
+                          nrow = 1, ncol = 13,
+                          dimnames = list("", 
+                                      c("**Min**","**1°Qu.**","**2°Qu.**",
+                                        "**3°Qu.**", "**Max**", "**Media**",
+                                        "**Moda**", "**Range**", "**IQR**",
+                                        "**Dev.st**","**CV**", "**Asim.**",
+                                        "**Curt.**")))
+
+kable(stats_months_inventory, caption = "**Indici della variabile Months_inventory**", digits = 2, align = "c")
+```
+
+Relativamente agli **indici di posizione**, i valori di tale variabile vanno da un minimo di 3.4 ad un massimo di 14.9, con una media di 9.19. 
+Il 1° e 3° quartile sono pari rispettivamente a 7.8 e 10.95, mentre il 2° quartile (mediana) è 8.95. Nonostante i valori della variabile sono su scala continua, non ve ne sono tantissimi e, pertanto, ha senso calcolarne la moda che risulta essere 8.1.
+
+Per quanto riguarda gli **indici di variabilità**, vi è una differenza di c.ca 11.5 tra il valore massimo e minimo (range), mentre l'intervallo di variazione del corpo centrale dei dati corrisponde a c.ca 3.15 (IQR).
+La deviazione standard di 2.3 indica che i valori spaziano mediamente nel seguente intervallo [9.19 - 2.3 ; 9.19 + 2.3]. Il coefficiente di variazione pari a 25.06 indica che la deviazione standard della variabile months_inventory è c.ca il 25% della sua media.
+
+Infine, osservando gli **indici di forma**, l'indice di asimmetria di 0.04 evidenzia una quasi perfetta simmetria della distribuzione. L'indice di curtosi pari a -0.17 indica che la distribuzione della variabile months_inventory è platicurtica, ovvero ha una forma più appiattita rispetto a quella della distribuzione normale.
+
+## 4. Qual è la variabile con variabilità più elevata? Come ci sei arrivato? E quale quella più asimmetrica?
+
+La variabile **volume** è quella con **variabilità più elevata** in quanto, tra tutte le variabili, ha il coefficiente di variazione più grande (53.71).
+Inoltre, tale variabile risulta anche quella **più asimmetrica** poiché presenta un indice di asimmetria più grande in valore assoluto (0.88).
+
+## 5. Dividi una delle variabili quantitative in classi, scegli tu quale e come, costruisci la distribuzione di frequenze, il grafico a barre corrispondente e infine calcola l’indice di Gini.
+
+E' stata presa come riferimento la variabile volume, dividendola in 5 classi di uguale ampiezza e sono state costruite le distribuzioni di frequenze (assolute: *ni*, relative: *fi*, cumulate: *Ni*, relative cumulate: *Fi*).
+
+```{r}
+volume_cl <- cut(volume, breaks = c(5,21,37,53,69,85))
+n <- length(volume_cl)
+
+ni <- table(volume_cl)
+fi <- round(ni/n, 2)
+Ni <- cumsum(ni)
+Fi <- round(Ni/n, 2)
+
+distr_freq_volume_cl <- cbind(ni, fi, Ni, Fi)
+```
+
+```{r}
+kable(distr_freq_volume_cl, caption = "**Distribuzioni di Frequenze delle Classi del Valore Totale delle Vendite (mln$)**", rownames = "**volume**")
+```
+
+Dalla distribuzione di frequenze assolute *(ni)* si può notare come la maggior parte delle osservazioni ricada nelle classi più basse (5,21] e (21,37], confermando il risultato emerso dall'indice di asimmetria dei dati originari (0.88). Infatti, dalla distribuzione di frequenze relative cumulate *(Fi)* si osserva come tali classi rappresentino il 70% del campione osservato. La classe centrale (37,53] registra una frequenza relativa *(fi)* del 19%. 
+Ne consegue che solamente l'11% delle rilevazioni osservate nel campione presenta un valore totale delle vendite superiore ai 53 milioni di dollari.
+
+Si riporta di seguito il grafico a barre della distribuzione di frequenze assolute, dal quale emerge facilmente come le classi più basse della variabile volume siano le più frequenti.
+
+```{r, out.width='75%', fig.align='center'}
+ggplot(data = dataset)+
+  geom_bar(aes(x=volume_cl),
+           stat = "count",
+           col = "khaki4",
+           fill = "khaki3")+
+  labs(title = "Distribuzione delle Classi del Valore Totale delle Vendite",
+       x = "valore totale delle vendite in classi (mln$)",
+       y = "frequenze assolute")+
+  scale_y_continuous(breaks = seq(0,100,10))+
+  theme_light()+
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+```
+
+```{r}
+fi2 <- fi^2
+G <-  1 - sum(fi2)
+Gini <- G*(5/4)
+```
+
+Inoltre, l'**indice di Gini** della variabile volume suddivisa in classi è pari a 0.88. Tale valore indica che la distribuzione è molto eterogenea e che le unità statistiche non si concentrano soltanto in una classe.
+
+## 6. Indovina l’indice di gini per la variabile city
+
+Poiché ciascuna modalità della variabile city registra la medesima frequenza, si può dedurre che il relativo indice di Gini è uguale a 1. Tale variabile risulta pertanto caratterizzata da un'eterogeneità massima.
+
+## 7. Qual è la probabilità che presa una riga a caso di questo dataset essa riporti la città “Beaumont”? E la probabilità che riporti il mese di Luglio? E la probabilità che riporti il mese di dicembre 2012?
+
+```{r, results='hide'}
+1/4
+```
+
+La probabilità che, presa una riga a caso di questo dataset, essa riporti la città “Beaumont” è pari al 25% in quanto vi sono 4 modalità per la variabile city, tutte con la medesima frequenza (n°casi favorevoli = 1 / n°casi possibili = 4).
+
+```{r, results='hide'}
+1/12
+```
+
+La probabilità che, presa una riga a caso di questo dataset, essa riporti il mese di Luglio è pari all'8% c.ca in quanto tutti i mesi dell'anno presentano la medesima frequenza (n°casi favorevoli = 1 / n°casi possibili = 12).
+
+```{r, results='hide'}
+table(month, year)
+4/240
+```
+
+La probabilità che, presa una riga a caso di questo dataset, essa riporti il mese di dicembre 2012 è c.ca l'1% in quanto dalla distribuzione di frequenze assolute congiunte delle variabili month e year emergono 4 rilevazioni, una per ciascuna città (n°casi favorevoli = 4 / n°casi possibili = 240).
+
+## 8. Esiste una colonna col prezzo mediano, creane una che indica invece il prezzo medio, utilizzando le altre variabili che hai a disposizione.
+
+```{r}
+dataset$mean_price <- round((volume*1000000)/sales, 0)
+```
+
+A partire dalle variabili volume e sales, è stata creata una nuova colonna nel dataset denominata mean_price e rappresentativa del prezzo medio di vendita in dollari. E' stata calcolata come rapporto tra la variabile volume (trasformata da milioni di dollari a dollari) e sales.
+
+## 9. Prova a creare un’altra colonna che dia un’idea di “efficacia” degli annunci di vendita. Riesci a fare qualche considerazione?
+
+```{r}
+dataset$sales_rate <- round(sales/(sales+listings),3)
+```
+Fatte le seguenti assunzioni:
+
+* ogni immobile sul mercato deve avere il relativo annuncio
+* la variabile listings, rappresentativa del numero totale di annunci attivi, non tiene conto degli annunci relativi agli immobili venduti
+* gli annunci scaduti riguardano solamente quelli relativi ad immobili venduti
+
+è stata creata una nuova variabile denominata sales_rate. Tale colonna è stata calcolata come rapporto tra la variabile sales e il numero totale di annunci (attivi e scaduti) e rappresenta il tasso di successo degli annunci di vendita, fornendone pertanto un'indicazione di "efficacia".
+
+```{r, results='hide'}
+detach(dataset)
+attach(dataset)
+
+mean(sales_rate)
+sd(sales_rate)
+cor(sales_rate, months_inventory)
+```
+Nel campione osservato si registra un tasso di successo degli annunci di vendita in media del 10%, con una deviazione standard pari al 3% c.ca.
+
+Inoltre, è stato calcolato il coefficiente di correlazione di Pearson tra la nuova variabile sales_rate e la variabile months_inventory, rappresentativa della quantità di tempo, espressa in mesi, necessaria per vendere tutte le inserzioni correnti al ritmo attuale delle vendite.
+La correlazione tra le due variabili è di -0.67 evidenziando una relazione lineare negativa piuttosto forte. Ne consegue che all'aumentare del tasso di successo degli annunci di vendita, la quantità in mesi necessaria per vendere tutte le inserzioni tende a diminuire (e viceversa).
+
+## 10. Prova a creare dei summary(), o semplicemente media e deviazione standard, di alcune variabili a tua scelta, condizionatamente alla città, agli anni e ai mesi.
+
+Il paragrafo è stato organizzato in sezioni corrispondenti alle variabili analizzate.
+
+### 10.1 Volume
+
+Prendendo come riferimento la variabile volume, la tabella seguente e il relativo grafico a barre ne rappresentano media e deviazione standard condizionatamente alla variabile city.
+Nel grafico l'altezza di ciascuna barra identifica la media della variabile volume condizionata ad una determinata città, mentre la linea verticale posta su ciascuna barra rappresenta la relativa deviazione standard.
+Si può notare come la città di Tyler sia quella con una media del valore totale delle vendite più alta, di oltre il triplo rispetto a quanto registrato nella città di Wichita Falls.
+Inoltre, Bryan-College Station è la città con la deviazione standard più alta, mentre Wichita Falls e Beaumont presentano i valori più bassi.
+
+```{r}
+result <- dataset %>%
+  group_by(city) %>% 
+  summarise(media = mean(volume),
+            dev.st = sd(volume))
+
+kable(result, caption = "**Media e Deviazione Standard del Valore Totale delle Vendite per Città**", digits = 2)
+```
+
+```{r, out.width='75%', fig.align='center'}
+ggplot(result, aes(x = city, y = media, fill = city))+
+  geom_bar(stat = "identity")+
+  geom_errorbar(aes(ymin = media - dev.st, ymax = media + dev.st), width = 0.2)+
+  labs(x = "città", y = "valore totale delle vendite (mln$)", title = "Media e Dev.St. del Valore Totale delle Vendite per Città", fill = "città")+
+  scale_y_continuous(breaks = seq(0,70,10))+
+  theme_light()+
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.position = "bottom",
+        legend.key.size = unit(0.5, "cm"))+
+  scale_fill_manual(values = c("blue", "lightblue", "royalblue3", "dodgerblue"))
+```
+
+La tabella seguente e il relativo grafico a barre rappresentano media e deviazione standard della variabile volume condizionatamente alla variabile year.
+Si può facilmente notare come, al crescere degli anni, corrisponda un aumento del valore totale delle vendite sia in media che in termini di deviazione standard. Infatti, il 2014 ha fatto registrare in media un valore totale delle vendite di quasi 40 mln, di oltre 10 mln rispetto al primo anno del periodo di riferimento.
+
+```{r}
+result <- dataset %>%
+  group_by(year) %>% 
+  summarise(media = mean(volume),
+            dev.st = sd(volume))
+
+kable(result, caption = "**Media e Deviazione Standard del Valore Totale delle Vendite per Anno**", digits = 2)
+```
+
+```{r, out.width='75%', fig.align='center'}
+ggplot(result, aes(x = factor(year), y = media, fill = factor(year)))+
+  geom_bar(stat = "identity")+
+  geom_errorbar(aes(ymin = media - dev.st, ymax = media + dev.st), width = 0.2)+
+  labs(x = "anno", y = "valore totale delle vendite (mln$)", title = "Media e Dev.St. del Valore Totale delle Vendite per Anno", fill = "anno")+
+  scale_y_continuous(breaks = seq(0,50,10))+
+  theme_light()+
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.key.size = unit(0.5, "cm"))+
+  scale_fill_manual(values = c("darkolivegreen1", "green3", "khaki4", "seagreen3", "springgreen"))
+```
+
+La tabella seguente e il relativo grafico a barre orizzontali rappresentano media e deviazione standard della variabile volume condizionatamente alla variabile month. 
+A differenza dei precedenti grafici, in questo caso la lunghezza di ciascuna barra identifica la media della variabile volume condizionata ad un determinato mese, mentre la linea orizzontale posta su ciascuna barra rappresenta la relativa deviazione standard.
+Si può notare come i mesi di Maggio, Giugno, Luglio e Agosto siano quelli contraddistinti da valori totali delle vendite più alti sia in media (>38 mln) che in termini di deviazione standard (>18 mln). Viceversa, Gennaio è il mese che registra i volumi delle vendite più bassi con una media di 19 mln e una deviazione standard di 8 mln.
+
+```{r}
+result <- dataset %>% 
+  group_by(month) %>% 
+  summarise(media = mean(volume),
+            dev.st = sd(volume))
+
+kable(result, caption = "**Media e Deviazione Standard del Valore Totale delle Vendite per Mese**", digits = 2)
+```
+
+```{r, out.width='75%', fig.align='center'}
+ggplot(result, aes(x = media, y = factor(month, levels = rev(1:12)), fill = factor(month))) +
+  geom_bar(stat = "identity") +
+  geom_errorbarh(aes(xmin = media - dev.st, xmax = media + dev.st), height = 0.5)+
+  labs(x = "valore totale delle vendite (mln$)", y = "mese", title = "Media e Dev.St. del Valore Totale delle Vendite per Mese", fill = "mese")+
+  scale_x_continuous(breaks = seq(0,70,10))+
+  theme_light()+
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.key.size = unit(0.5, "cm"))
+```
+
+Inoltre, per avere una maggior granularità della variabile volume, è stata condizionata congiuntamente alle variabili year e city. Il grafico a barre verticali seguente rappresenta la media del valore totale delle vendite per anno e città ed è utile per effettuare confronti sia tra le diverse città in un determinato anno, sia considerando una medesima città in diversi anni. Si può notare come la città di Tyler abbia registrato in ogni anno volumi in media sempre superiori ai 35 mln, fino a sfiorare la soglia dei 60 mln nell'ultimo anno di riferimento. D'altro canto, si registra un andamento abbastanza stazionario della media del valore totale delle vendite nella città di Wichita Falls, con valori compresi tra c.ca 12 mln e 15 mln nei diversi anni.
+Inoltre, in ogni anno si può osservare come la "classifica" della media dei volumi delle vendite sia stata sempre la medesima, con la città di Tyler con i valori più alti, seguita in ordine via via decrescente dalle città di Bryan-College Station, Beaumont e Wichita Falls.
+
+```{r, results='hide'}
+result <- dataset %>%
+  group_by(year, city) %>% 
+  summarise(media = mean(volume),
+            dev.st = sd(volume),
+            .groups = "drop")
+```
+
+```{r, out.width='75%', fig.align='center'}
+ggplot(result, aes(x = factor(year), y = media, fill = city)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(y = "valore totale delle vendite (mln$)", x = "anno", title = "Media del Valore Totale delle Vendite per Anno e Città", fill = "città")+
+  scale_y_continuous(breaks = seq(0,70,10))+
+  theme_light()+
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.key.size = unit(0.5, "cm"),
+        legend.position = "bottom")+
+   scale_fill_manual(values = c("green3", "khaki4", "blue", "lightblue"))
+```
+
+### 10.2 Sales
+
+Prendendo come riferimento la variabile sales, la tabella seguente e il relativo grafico a barre ne rappresentano media e deviazione standard condizionatamente alla variabile city. Si può notare come la città di Tyler sia quella con una media del numero totale delle vendite più alta, di oltre il doppio rispetto a quanto registrato nella città di Wichita Falls.
+Inoltre, Bryan-College Station è la città che registra la deviazione standard maggiore, mentre Wichita Falls quella minore.
+
+```{r}
+result <- dataset %>%
+  group_by(city) %>% 
+  summarise(media = mean(sales),
+            dev.st = sd(sales))
+
+kable(result, caption = "**Media e Deviazione Standard del N° Totale di Vendite per Città**", digits = 2)
+```
+
+```{r, out.width='75%', fig.align='center'}
+ggplot(result, aes(x = city, y = media, fill = city))+
+  geom_bar(stat = "identity")+
+  geom_errorbar(aes(ymin = media - dev.st, ymax = media + dev.st), width = 0.2)+
+  labs(x = "città", y = "n° totale di vendite", title = "Media e Dev.St. del N° Totale di Vendite per Città", fill = "città")+
+  scale_y_continuous(breaks = seq(0,350,50))+
+  theme_light()+
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.3),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.key.size = unit(0.5, "cm"),
+        legend.position = "bottom")+
+  scale_fill_manual(values = c("blue", "lightblue", "royalblue3", "dodgerblue"))
+```
+
+La tabella seguente e il relativo grafico a barre rappresentano media e deviazione standard della variabile sales condizionatamente alla variabile year.
+Si può facilmente notare come, al crescere degli anni, corrisponda quasi sempre un aumento del numero totale delle vendite sia in media che in termini di deviazione standard. Infatti, negli ultimi due anni (2013-2014) si sono registrati in media un numero totale di vendite maggiore (oltre le 210 unità), mentre nei primi due anni (2010-2011) i valori più bassi (sulle 160 unità).
+
+```{r}
+result <- dataset %>%
+  group_by(year) %>% 
+  summarise(media = mean(sales),
+            dev.st = sd(sales))
+
+kable(result, caption = "**Media e Deviazione Standard del N° Totale di Vendite per Anno**", digits = 2)
+```
+
+```{r, out.width='75%', fig.align='center'}
+ggplot(result, aes(x = factor(year), y = media, fill = factor(year)))+
+  geom_bar(stat = "identity")+
+  geom_errorbar(aes(ymin = media - dev.st, ymax = media + dev.st), width = 0.2)+
+  labs(x = "anno", y = "n° totale di vendite", title = "Media e Dev.St. del N° Totale di Vendite per Anno", fill = "anno")+
+  scale_y_continuous(breaks = seq(0,350,50))+
+  theme_light()+
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.key.size = unit(0.5, "cm"))+
+  scale_fill_manual(values = c("darkolivegreen1", "green3", "khaki4", "seagreen3", "springgreen"))
+```
+
+La tabella seguente e il relativo grafico a barre orizzontali rappresentano media e deviazione standard della variabile sales condizionatamente alla variabile month. Come per la media e deviazione standard della variabile volume condizionata a month, anche in questo caso i mesi di Maggio, Giugno, Luglio e Agosto sono quelli contraddistinti da valori maggiori sia in media (>230 unità) che in termini di deviazione standard (>79 unità), mentre Gennaio risulta ancora una volta il mese "peggiore".
+
+```{r}
+result <- dataset %>% 
+  group_by(month) %>% 
+  summarise(media = mean(sales),
+            dev.st = sd(sales))
+
+kable(result, caption = "**Media e Deviazione Standard del N° Totale di Vendite per Mese**", digits = 2)
+```
+
+```{r, out.width='75%', fig.align='center'}
+ggplot(result, aes(x = media, y = factor(month, levels = rev(1:12)), fill = factor(month))) +
+  geom_bar(stat = "identity") +
+  geom_errorbarh(aes(xmin = media - dev.st, xmax = media + dev.st), height = 0.5)+
+  labs(x = "n° totale di vendite", y = "mese", title = "Media e Dev.St. del N° Totale di Vendite per Mese", fill = "mese")+
+  scale_x_continuous(breaks = seq(0,350,50))+
+  theme_light()+
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.key.size = unit(0.5, "cm"))
+```
+
+Anche la variabile sales è stata condizionata congiuntamente alle variabili year e city.
+Il grafico seguente consente di confrontare la media del numero totale delle vendite sia tra le diverse città in un determinato anno, sia in una medesima città su diversi anni. Si può notare come, in ogni anno, la città di Tyler abbia registrato in media un numero totale di vendite sempre superiore alle 200 unità, con oltre 300 unità di immobili venduti nell'ultimo anno di riferimento.
+D'altro canto, Wichita Falls presenta un andamento abbastanza stazionario della media del numero totale delle vendite, con valori compresi tra le 100 e le 125 unità.
+La città di Beaumont ha fatto registrare una leggera diminuzione della media delle unità vendute nell'anno successivo al 2010, per poi osservare degli aumenti negli anni successivi, raggiungendo dal 2013 la soglia delle 200 unità. 
+Infine, nella città di Bryan-College Station si rilevano valori della media delle unità vendute molto alti negli ultimi due anni (>225 unità), rispetto alle c.ca 160 unità degli anni 2010-2011.
+
+```{r, results='hide'}
+result <- dataset %>%
+  group_by(year, city) %>% 
+  summarise(media = mean(sales),
+            dev.st = sd(sales),
+            .groups = "drop")
+```
+
+```{r, out.width='75%', fig.align='center'}
+ggplot(result, aes(x = factor(year), y = media, fill = city)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(y = "n° totale di vendite", x = "anno", title = "Media del N° Totale di Vendite per Anno e Città", fill = "città")+
+  scale_y_continuous(breaks = seq(0,350,50))+
+  theme_light()+
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.key.size = unit(0.5, "cm"),
+        legend.position = "bottom")+
+   scale_fill_manual(values = c("green3", "khaki4", "blue", "lightblue"))
+```
+
+## 11. Utilizza i boxplot per confrontare la distribuzione del prezzo mediano delle case tra le varie città. Commenta il risultato
+
+```{r, out.width='75%', fig.align='center'}
+ggplot()+
+  geom_boxplot(aes(x = city, y = median_price), 
+               fill = c("green3", "khaki4", "dodgerblue", "lightblue"))+
+  labs(x = "città", y = "prezzo mediano ($)", 
+       title = "Prezzo Mediano degli Immobili per Città - Boxplot ")+
+  scale_y_continuous(breaks = seq(70000, 180000, 10000)) +
+  theme_light()+
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+```
+
+Dal grafico emerge subito che la città di Bryan-College Station presenta i valori più alti per il prezzo mediano degli immobili (range c.ca 140k-180k), mente la città di Wichita Falls i valori più bassi (range c.ca 75k-135k).
+
+Considerando la mediana del prezzo mediano per ciascuna città, individuata dalla linea centrale nella scatola, si registra il valore più alto nella città di Bryan-College Station (c.ca 155k). Le restanti città di Tyler, Beaumont e Wichita Falls presentano rispettivamente un valore di c.ca 140k, 130k e 100k.
+
+Considerando la scatola di ciascun boxplot, ovvero la differenza interquartile, si può notare come questa sia più ampia nella città di Wichita Falls. Ne consegue che per tale città vi è una maggior variabilità del prezzo mediano all'interno del 50% dei valori compresi tra il 1° e 3° quartile.
+
+Inoltre, si può notare come la città di Tyler sia l'unica a non registrare alcun outlier, mentre le città di Beaumont e Wichita Falls presentano degli outliers molto distanti dai rispettivi massimi relativi, individuati dalla parte finale delle linee uscenti verso l'alto dalle scatole. Invece, per la città di Bryan-College Station l'outlier non è molto distante dal suo massimo relativo.
+
+## 12. Utilizza i boxplot o qualche variante per confrontare la distribuzione del valore totale delle vendite tra le varie città ma anche tra i vari anni. Qualche considerazione da fare?
+
+In entrambi i grafici presenti nel paragrafo è possibile visualizzare per ciascuna modalità/valore della variabile city/year, mezzo boxplot a sinistra e mezza densità di probabilità a destra per la variabile volume.
+
+```{r, out.width='75%', fig.align='center'}
+ggplot()+
+  geom_half_boxplot(aes(x=city, y=volume),
+                    side = "l", fill="green3")+
+  geom_half_violin(aes(x=city, y=volume),
+                   side = "r", fill="dodgerblue")+
+  labs(x = "città", y = "valore totale delle vendite (mln$)", 
+       title = "Valore Totale delle Vendite per Città - Boxplot & Densità")+
+  scale_y_continuous(breaks = seq(0,90,10))+
+  theme_light()+
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+```
+
+Considerando i **boxplot** sul lato sinistro di ciascuna modalità della variabile city, è possibile notare come la città di Tyler presenti il valore totale delle vendite maggiore rispetto alle altre città in termini di mediana (c.ca 45 mln), mentre la città di Wichita Falls il valore più basso (c.ca 13 mln). Le città di Bryan-College Station e Beaumont registrano rispettivamente una mediana di c.ca 33 mln e 25 mln.
+Considerando la scatola di ciascun boxplot, ovvero la differenza interquartile, si può notare come questa sia più ampia nella città di Bryan-College Station, con una conseguente variabilità maggiore all'interno del 50% dei valori compresi tra il 1° e 3° quartile (c.ca 25-48 mln). Inoltre, tale città registra il range di valori più ampio, da un minimo di 15 mln ad un massimo di c.ca 83 mln. La città di Tyler presenta un outlier di c.ca 80 mln distante di c.ca 10 mln dal suo massimo relativo. Infine, la città di Wichita Falls risulta essere quella con una differenza interquartile e con un range minore.
+
+Considerando le **densità di probabilità** sul lato destro di ciascuna modalità, si osserva la forma delle distribuzioni di probabilità della variabile volume condizionata ad una determinata città. Tutte le città manifestano dei valori bassi più frequenti e, pertanto, possiamo concludere che le relative distribuzioni sono asimmetriche positive. Ciò è particolarmente evidente nella città di Bryan-College Station.
+Inoltre, le distribuzioni di probabilità della variabile volume condizionate alle città di Beaumont, Tyler e Wichita Falls presentano una forma più appiattita rispetto alla normale e possiamo concludere che esse sono platicurtiche.
+Le prime evidenze grafiche sulla forma delle distribuzioni di probabilità condizionate sono confermate dai relativi indici mostrati nella seguente tabella.
+
+```{r}
+result <- dataset %>% 
+  group_by(city) %>% 
+  summarise(asimmetria = skewness(volume),
+             curtosi = kurtosis(volume)-3)
+
+kable(result, caption = "**Valore Totale delle Vendite per Città - Indici di forma**", digits = 2)
+```
+
+```{r, out.width='75%', fig.align='center'}
+ggplot()+
+  geom_half_boxplot(aes(x=factor(year), y=volume),
+                    side = "l", fill="green3")+
+  geom_half_violin(aes(x=factor(year), y=volume),
+                   side = "r", fill="dodgerblue")+
+  labs(x = "anno", y = "valore totale delle vendite (mln $)", 
+       title = "Valore Totale delle Vendite per Anno - Boxplot & Densità")+
+  scale_y_continuous(breaks = seq(0,90,10))+
+  theme_light()+
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+```
+
+Considerando i **boxplot** sul lato sinistro di ogni anno, si può osservare come il minimo del valore totale delle vendite sia abbastanza stazionario, con valori intorno ai 10 mln. Viceversa, il massimo della variabile volume condizionata manifesta un trend positivo, passando da 50 mln nel 2010 a quasi 85 mln nell'ultimo anno di riferimento. La mediana registra un leggero aumento negli ultimi due anni. Infatti, nei primi tre anni essa oscilla intorno ai 25 mln, mentre nel 2013 e 2014 essa si attesta rispettivamente su c.ca 33 mln e 37 mln.
+Inoltre, negli ultimi due anni si può notare come la scatola rappresentativa della differenza interquartile sia più ampia rispetto ai primi tre anni. Ad esempio, nel 2014 essa è compresa nell'intervallo di c.ca 18-56 mln. Infine, non sono presenti outliers nei diversi anni e quindi il massimo coincide sempre con il massimo relativo.
+
+Considerando le **densità di probabilità** sul lato destro di ogni anno, si può osservare la forma delle distribuzioni di probabilità della variabile volume condizionata ai diversi anni.
+Tutte le distribuzioni presentano valori bassi più frequenti e hanno una forma più appiattita rispetto alla normale. Pertanto, possiamo concludere che esse hanno un'asimmetria positiva e che sono platicurtiche.
+Le prime evidenze grafiche sulla forma di tali distribuzioni sono confermate dai relativi indici mostrati nella seguente tabella.
+
+```{r}
+result <- dataset %>% 
+  group_by(year) %>% 
+  summarise(asimmetria = skewness(volume),
+             curtosi = kurtosis(volume)-3)
+
+kable(result, caption = "**Valore Totale delle Vendite per Anno - Indici di forma**", digits = 2)
+```
+
+## 13. Usa un grafico a barre sovrapposte per ogni anno, per confrontare il totale delle vendite nei vari mesi, sempre considerando le città. Prova a commentare ciò che viene fuori. Già che ci sei prova anche il grafico a barre normalizzato.
+
+```{r, fig.align='center', fig.height=8.5}
+dataset_sub <- subset(dataset, subset = T, select = c(1:4))
+
+ggplot(dataset_sub)+
+  geom_col(aes(x=factor(dataset_sub$month), y=dataset_sub$sales, 
+               fill=dataset_sub$city),
+           position = "stack")+
+  facet_wrap(~ factor(dataset_sub$year), nrow = 3, scales = "free_x")+
+  scale_y_continuous(breaks = seq(0,1200,200))+
+  labs(title = "N° Totale di Vendite per Città, nei vari Mesi di ogni Anno",
+       x = "mese", y= "n° totale di vendite",
+       fill = "città")+
+  scale_fill_manual(values = c("green3", "khaki4", "blue", "turquoise"))+
+  theme_light()+
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.key.size = unit(0.5, "cm"),
+        legend.position = "bottom")
+```
+
+Il **grafico a barre** con il numero totale di vendite per ciascuna città nei vari mesi, è stato costruito nella pagina precedente spacchettandolo in cinque diversi grafici per ogni anno di riferimento (2010-2014). 
+
+Si può notare come, al netto del 2010, le vendite maggiori di immobili tendano a concentrarsi in ciascun anno nei mesi da Maggio ad Agosto. Durante gli ultimi due anni del periodo di riferimento, si registra un aumento complessivo nelle vendite, con i mesi di Maggio, Giugno, Luglio e Agosto che registrano in entrambi gli anni delle vendite superiori alle 1000 unità. In ogni anno Gennaio risulta il mese con il numero più basso di immobili venduti. 
+
+Inoltre, in ogni anno si può notare come nei mesi contraddistinti da numeri più alti nelle vendite, le città di Tyler e Bryan-College Station tendano ad equivalersi, mentre nei mesi "peggiori" Tyler registra un numero di vendite superiore rispetto a Bryan-College Station. 
+
+Infine, considerando ciascun mese di ogni anno, risulta evidente come la città di Wichita Falls non sia mai riuscita a raggiungere le 200 unità di immobili venduti.
+
+A pagina seguente viene riportato anche il relativo **grafico normalizzato** dal quale è possibile fare ulteriori confronti, grazie alle frequenze relative rappresentate sull'asse delle y. 
+
+Complessivamente, considerando ciascun mese di ogni anno, si può notare come la città di Tyler registri sempre un numero totale di vendite mai inferiore al 30% delle osservazioni.
+Inoltre, considerando ad esempio il 2014, la frequenza relativa delle vendite attribuite a tale città si attesta su c.ca il 40% nei mesi di Gennaio, Settembre, Novembre e Dicembre. 
+
+Infine, in quasi tutti i mesi di ogni anno, le città di Beaumont e Wichita Falls rappresentano rispettivamente il 20-25% e 10-15% delle vendite osservate nel campione.
+
+```{r, fig.align='center', fig.height=8.5}
+ggplot(dataset_sub)+
+  geom_col(aes(x=factor(dataset_sub$month), y=dataset_sub$sales, 
+               fill=dataset_sub$city),
+           position = "fill")+
+  facet_wrap(~ factor(dataset_sub$year), nrow = 3, scales = "free_x")+
+  scale_y_continuous(breaks = seq(0,1,0.1))+
+  labs(title = "N° Totale di Vendite per Città, nei vari Mesi di ogni Anno - \n Grafico Normalizzato",
+       x = "mese", y= "n° totale di vendite",
+       fill = "città")+
+  scale_fill_manual(values = c("green3", "khaki4", "blue", "turquoise"))+
+  theme_light()+
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.key.size = unit(0.5, "cm"),
+        legend.position = "bottom")
+```
+
+## 14. Crea un line chart di una variabile a tua scelta per fare confronti commentati fra città e periodi storici. Consigli: Prova inserendo una variabile per volta. Prova a usare variabili esterne al dataset, tipo vettori creati da te appositamente.
+
+```{r, fig.align='center', fig.width=9, fig.height=6}
+dataset$period <- sprintf("%4d-%02d", year, month)
+dataset$period <- paste0(dataset$period, "-01")
+dataset$period <- as.Date(dataset$period, format = "%Y-%m-%d")
+detach(dataset)
+attach(dataset)
+
+ggplot(dataset, aes(x = period, y = volume, group = city, color = city))+
+  geom_line()+
+  geom_point()+
+  scale_y_continuous(breaks = seq(0,90,10))+
+  scale_x_date(date_breaks = "3 months", date_labels = "%Y, %b",
+               expand = c(0.01,0.01), minor_breaks = "1 month")+
+  labs(x = "", y = "valore totale delle vendite (mln$)", group = "città",
+       title = "Evoluzione del Valore Totale delle Vendite per ogni Città,
+       (Gennaio 2010 - Dicembre 2014)", color = "città")+
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5,
+                                 hjust = 0, size = 12),
+        axis.text.y = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12),
+        legend.key.size = unit(1.5, "cm"),
+        legend.position = "bottom")+
+  scale_color_manual(values = c("green", "violet", "blue", "pink"))
+```
+
+Il grafico mostra l'evoluzione della variabile volume, per ciascuna città, nel periodo di riferimento osservato nel campione (Gennaio 2010 - Dicembre 2014). Ogni punto della linea spezzata individua una rilevazione mensile per un totale di 60 osservazioni per ogni città.
+
+Considerando l'intero periodo, si può notare come la città di Bryan-College Station abbia fatto registrare, a Luglio 2014, il valore totale più alto totale delle vendite (quasi 85 mln). Tuttavia, in ben 53 mesi su 60, la città di Tyler presenta i valori nelle vendite più alti rispetto a tutte le altre città, Bryan-College Station compresa. D'altro canto, il valore più basso nelle vendite si è registrato a Gennaio 2011 nella città di Wichita Falls, la quale presenta i valori più bassi rispetto alle altre città in tutte le rilevazioni mensili.
+
+In relazione agli ultimi tre anni del periodo di riferimento, il mese di Luglio risulta sempre quello contraddistinto da un valore totale delle vendite maggiore. 
+
+Inoltre, in ogni anno, si osserva nei mesi centrali una notevole differenza tra le città di Tyler e Bryan-College Station, caratterizzate da volumi maggiori, e le città di Beaumont e Wichita Falls che presentano volumi inferiori.
+
+
+
+
+
+
+
+
